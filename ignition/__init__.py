@@ -7,6 +7,7 @@ at http://mozilla.org/MPL/2.0/.
 
 from .globals import *
 from .request import Request
+from .asyncio import AsyncRequest
 from .response import (
   ClientCertRequiredResponse,
   ErrorResponse,
@@ -111,7 +112,7 @@ def request(request_url, referer=None, timeout=None, raise_errors=False, ca_cert
   users should use.
 
   If a *referer* is provided, a dynamic URL is constructed by ignition to send a
-  request to. (*referer* expectes a fully qualified url as returned by
+  request to. (*referer* expects a fully qualified url as returned by
   `ignition.BaseResponse.url` or (less prefered) `ignition.url()`).
   Typically, in order to simplify the browsing experience, you should pass
   the previously requested URL as the referer to simplify URL construction logic.
@@ -169,6 +170,28 @@ def request(request_url, referer=None, timeout=None, raise_errors=False, ca_cert
   )
 
   return req.send()
+
+
+async def request_async(request_url, referer=None, timeout=None,
+                        raise_errors=False, ca_cert=None):
+  '''
+  Given a *url* to a Gemini capsule, this performs an asynchronous request to the specified
+  url and returns a response (as a subclass of [ignition.BaseResponse](#ignitionbaseresponse))
+  with the details associated to the response.
+
+  The function parameters are identical to those of request()
+  '''
+
+  req = AsyncRequest(
+    request_url,
+    cert_store=__cert_store,
+    request_timeout=__timeout.get_timeout(timeout),
+    referer=referer,
+    ca_cert=ca_cert,
+    raise_errors=raise_errors
+  )
+
+  return await req.send()
 
 
 __all__ = [

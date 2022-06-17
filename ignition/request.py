@@ -45,7 +45,7 @@ class Request:
     Initializes Response with a url, referer, and timeout
     '''
 
-    self.__url = URL(url, referer_url=referer)
+    self._url = URL(url, referer_url=referer)
     self.__raise_errors = raise_errors
     self.__timeout = request_timeout
     self.__cert_store = cert_store
@@ -56,30 +56,30 @@ class Request:
     Fetch the generated URL for the request (based on referer, if present)
     '''
 
-    return str(self.__url)
+    return str(self._url)
 
   def send(self):
     '''
-    Performes network communication and returns a Response object
+    Performs network communication and returns a Response object
     '''
 
-    logger.debug(f"Attempting to create a connection to {self.__url.netloc()}")
+    logger.debug(f"Attempting to create a connection to {self._url.netloc()}")
     socket_result = self.__get_socket()
     if isinstance(socket_result, BaseResponse):
       return socket_result
 
-    logger.debug(f"Attempting to negotiate SSL handshake with {self.__url.netloc()}")
+    logger.debug(f"Attempting to negotiate SSL handshake with {self._url.netloc()}")
     secure_socket_result = self.__negotiate_ssl(socket_result)
     if isinstance(secure_socket_result, BaseResponse):
       return secure_socket_result
 
-    logger.debug(f"Validating server certificate to {self.__url.netloc()}")
-    ssl_certificate_result = self.__validate_ssl_certificate(secure_socket_result)
+    logger.debug(f"Validating server certificate to {self._url.netloc()}")
+    ssl_certificate_result = self._validate_ssl_certificate(secure_socket_result)
     if isinstance(ssl_certificate_result, BaseResponse):
       return ssl_certificate_result
 
-    logger.debug(f"Sending request header: {self.__url}")
-    transport_result = self.__transport_payload(secure_socket_result, self.__url)
+    logger.debug(f"Sending request header: {self._url}")
+    transport_result = self.__transport_payload(secure_socket_result, self._url)
     if isinstance(transport_result, BaseResponse):
       return transport_result
 
@@ -93,36 +93,36 @@ class Request:
     '''
 
     try:
-      sock = socket.create_connection((self.__url.host(), self.__url.port()), timeout=self.__timeout)
+      sock = socket.create_connection((self._url.host(), self._url.port()), timeout=self.__timeout)
       logger.debug(f"Created socket connection: {sock}")
       return sock
     except ConnectionRefusedError as err:
-      logger.debug(f"ConnectionRefusedError: Connection to {self.__url.netloc()} was refused. {err}")
+      logger.debug(f"ConnectionRefusedError: Connection to {self._url.netloc()} was refused. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Connection refused")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Connection refused")
     except ConnectionResetError as err:
-      logger.debug(f"ConnectionResetError: Connection to {self.__url.netloc()} was reset. {err}")
+      logger.debug(f"ConnectionResetError: Connection to {self._url.netloc()} was reset. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Connection reset")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Connection reset")
     except SocketHErrorException as err:
-      logger.debug(f"socket.herror: socket.gethostbyaddr returned for {self.__url.host()}. {err}")
+      logger.debug(f"socket.herror: socket.gethostbyaddr returned for {self._url.host()}. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Host error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Host error")
     except SocketGaiErrorException as err:
-      logger.debug(f"socket.gaierror: socket.getaddrinfo returned unknown host for {self.__url.host()}. {err}")
+      logger.debug(f"socket.gaierror: socket.getaddrinfo returned unknown host for {self._url.host()}. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_DNS, "Unknown host")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_DNS, "Unknown host")
     except SocketTimeoutException as err:
-      logger.debug(f"socket.timeout: socket timed out connecting to {self.__url.host()}. {err}")
+      logger.debug(f"socket.timeout: socket timed out connecting to {self._url.host()}. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Socket timeout")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Socket timeout")
     except Exception as err:
-      logger.error(f"Unknown exception encountered when connecting to {self.__url.netloc()} - {err}")
+      logger.error(f"Unknown exception encountered when connecting to {self._url.netloc()} - {err}")
       raise err
 
   def __negotiate_ssl(self, socket_obj) -> ssl.SSLSocket:
@@ -131,63 +131,63 @@ class Request:
     '''
 
     try:
-      context = self.__setup_ssl_default_context()
+      context = self._setup_ssl_default_context()
 
       if self.is_using_ca_cert():
-        self.__setup_ssl_client_certificate_context(context)
+        self._setup_ssl_client_certificate_context(context)
 
-      secure_socket_result = context.wrap_socket(socket_obj, server_hostname=self.__url.host())
+      secure_socket_result = context.wrap_socket(socket_obj, server_hostname=self._url.host())
       return secure_socket_result
     except ssl.SSLError as err:
-      logger.debug(f"ssl.SSLError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Error")
     except ssl.SSLZeroReturnError as err:
-      logger.debug(f"ssl.SSLZeroReturnError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLZeroReturnError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Zero Return Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Zero Return Error")
     except ssl.SSLWantReadError as err:
-      logger.debug(f"ssl.SSLWantReadError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLWantReadError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Read Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Read Error")
     except ssl.SSLWantWriteError as err:
-      logger.debug(f"ssl.SSLWantWriteError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLWantWriteError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Write Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Write Error")
     except ssl.SSLSyscallError as err:
-      logger.debug(f"ssl.SSLSyscallError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLSyscallError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Syscall Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Syscall Error")
     except ssl.SSLEOFError as err:
-      logger.debug(f"ssl.SSLEOFError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLEOFError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL EOF Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL EOF Error")
     except ssl.SSLCertVerificationError as err:
-      logger.debug(f"ssl.SSLCertVerificationError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.SSLCertVerificationError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Certificate Verification Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Certificate Verification Error")
     except ssl.CertificateError as err:
-      logger.debug(f"ssl.CertificateError for {self.__url.host()} - {err}")
+      logger.debug(f"ssl.CertificateError for {self._url.host()} - {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Certificate Error")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "SSL Certificate Error")
     except SocketTimeoutException as err:
-      logger.debug(f"socket.timeout: socket timed out connecting to {self.__url.host()}")
+      logger.debug(f"socket.timeout: socket timed out connecting to {self._url.host()}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Socket timeout")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Socket timeout")
     except Exception as err:
-      logger.error(f"Unknown exception encountered when completing SSL handshake for {self.__url.host()} - {err}")
+      logger.error(f"Unknown exception encountered when completing SSL handshake for {self._url.host()} - {err}")
       raise err
 
-  def __validate_ssl_certificate(self, secure_socket) -> CertWrapper:
+  def _validate_ssl_certificate(self, secure_socket) -> CertWrapper:
     '''
     Trust-on-first-use (TOFU) validation on SSL certificate or throws exception
     '''
@@ -197,22 +197,22 @@ class Request:
       self.__cert_store.validate_tofu_or_add(secure_socket.server_hostname, certificate_wrapper)
       return certificate_wrapper
     except ValueError as err:
-      logger.debug(f"ValueError: {self.__url.netloc()}. {err}")
+      logger.debug(f"ValueError: {self._url.netloc()}. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, err)
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, err)
     except RemoteCertificateExpired as err:
-      logger.debug(f"RemoteCertificateExpired: {self.__url.netloc()} has an expired certificate. {err}")
+      logger.debug(f"RemoteCertificateExpired: {self._url.netloc()} has an expired certificate. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "Certificate expired")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "Certificate expired")
     except TofuCertificateRejection as err:
-      logger.debug(f"TofuCertificateRejection: {self.__url.netloc()} has an untrusted, unknown certificate. {err}")
+      logger.debug(f"TofuCertificateRejection: {self._url.netloc()} has an untrusted, unknown certificate. {err}")
       if self.__raise_errors:
         raise err
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_TLS, "Untrusted certificate (TOFU rejection)")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_TLS, "Untrusted certificate (TOFU rejection)")
     except Exception as err:
-      logger.error(f"Unknown exception encountered when validating ssl certificate on {self.__url.netloc()} - {err}")
+      logger.error(f"Unknown exception encountered when validating ssl certificate on {self._url.netloc()} - {err}")
       raise err
 
   def is_using_ca_cert(self):
@@ -221,7 +221,7 @@ class Request:
     '''
     return self.__ca_cert is not None
 
-  def __setup_ssl_default_context(self):
+  def _setup_ssl_default_context(self):
     '''
     Setup an SSL default context (without a client certificate)
     This will bypass certificate validation against a CA.
@@ -233,7 +233,7 @@ class Request:
     context.verify_mode = ssl.CERT_NONE
     return context
 
-  def __setup_ssl_client_certificate_context(self, context):
+  def _setup_ssl_client_certificate_context(self, context):
     '''
     Load cert chain for client certificate
     TODO: Better error handling here?
@@ -251,10 +251,10 @@ class Request:
       fd = socket_obj.makefile('rb')
       return fd.readline().decode(GEMINI_DEFAULT_ENCODING).strip(), fd.read()
     except SocketTimeoutException:
-      logger.debug(f"socket.timeout: socket timed out connecting to {self.__url.host()}")
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Socket timeout")
+      logger.debug(f"socket.timeout: socket timed out connecting to {self._url.host()}")
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_HOST, "Socket timeout")
     except Exception as err:
-      logger.error(f"Unknown exception encountered when transporting data to {self.__url.netloc()} - {err}")
+      logger.error(f"Unknown exception encountered when transporting data to {self._url.netloc()} - {err}")
       raise err
 
   def __handle_response(self, header, raw_body, certificate: cryptography.x509.Certificate):
@@ -270,6 +270,6 @@ class Request:
       if len(meta) > GEMINI_RESPONSE_HEADER_META_MAXLENGTH:
         raise GeminiResponseParseError("Header meta text is too long")
 
-      return ResponseFactory.create(self.__url, status, meta.strip(), raw_body, certificate)
+      return ResponseFactory.create(self._url, status, meta.strip(), raw_body, certificate)
     except GeminiResponseParseError as err:
-      return ResponseFactory.create(self.__url, RESPONSE_STATUSDETAIL_ERROR_PROTOCOL, err)
+      return ResponseFactory.create(self._url, RESPONSE_STATUSDETAIL_ERROR_PROTOCOL, err)

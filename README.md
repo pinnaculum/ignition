@@ -55,6 +55,30 @@ print(response.data())
 
 In **all** cases, Ignition assumes that the specified endpoint and protocol will respond over the Gemini protocol, so even if you provide a different protocol or port, it will assume that the endpoint is a Gemini capsule.
 
+## Asynchronous requests
+
+Ignition also supports asynchronous requests with asyncio.
+
+```python
+import asyncio
+import ignition
+
+
+async def run():
+  response = await ignition.request_async('//station.martinrue.com')
+
+  # response.body is an asyncio.StreamReader
+  print(await response.body.readline())
+
+  print(await response.body.read())
+
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(run())
+```
+
+[source](examples/async-usage.py)
+
 ## Key Features
 
 ![This is Gemini Control.  The conversation between pilot and ground so far in this filght has largely been confined to the normal type of test pilot talk that you would expect.](docs/img/transcript-3.png)
